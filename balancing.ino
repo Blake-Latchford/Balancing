@@ -1,19 +1,15 @@
+
 #include "tilt_angle.h"
 #include "PID.h"
 #include "drive_control.h"
-#include "target_angle_control.h"
 #include <SPI.h>
 #include <SD.h>
 
 #define K_P (1.0)
 
 TiltAngle tilt_angle;
-PID drive_control_pid(
-  0.0,
-  0.0, //2.0,
-  0.0 );//20.0 );
+PID drive_control_pid( 0.0, 0.0, 0.0 );
 DriveControl drive_control;
-TargetAngleControl target_angle_control(K_P, 0.3);
 File data_log;
 
 void interrupt_handler() {
@@ -32,7 +28,7 @@ void setup() {
   }
   else {
     data_log = SD.open("datalog.csv", FILE_WRITE);
-    data_log.println("tilt_angle_in_rad,target_tilt_angle_in_rad,confidence_in_percent,current_drive_output_in_percent");
+    data_log.println("tilt_angle_in_rad,current_drive_output_in_percent");
   }
 
   tilt_angle.setup();
@@ -75,16 +71,8 @@ void new_angle_loop( const double tilt_angle_in_rad )
     current_drive_output_in_percent,
     current_drive_output_in_percent);
 
-  target_angle_control.loop(
-    tilt_angle_in_rad,
-    current_drive_output_in_percent);
-
   if(data_log) {
     data_log.print(tilt_angle_in_rad);
-    data_log.print(",");
-    data_log.print(target_angle_control.get_equilibrium_in_rad());
-    data_log.print(",");
-    data_log.print(target_angle_control.get_confidence_in_percent());
     data_log.print(",");
     data_log.println(current_drive_output_in_percent);
     unflushed_log_lines++;
