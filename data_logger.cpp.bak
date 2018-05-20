@@ -1,0 +1,77 @@
+#include <RH_ASK.h>
+#include <SPI.h>
+#include "data_logger.h"
+
+#define BAUD_RATE ((uint16_t)4000)
+#define RX_PIN ((uint8_t)11)
+#define TX_PIN ((uint8_t)12)
+#define PTT_PIN ((uint8_t)13)
+
+struct DataLogger::DataLoggerPriv {
+  enum class State {
+    INIT,
+    TRANSMIT
+  } state = State::INIT;
+ 
+  DataLoggerPriv()
+  : driver( BAUD_RATE, RX_PIN, TX_PIN, PTT_PIN )
+  {}
+  
+  void loop(const float& data_value)
+  {
+    switch(state) {
+    default:
+      state_init();
+      break;
+    case State::TRANSMIT:
+      state_transmit( data_value );
+      break;
+    }
+  }
+
+  void state_init() {
+    if(driver.init()) {
+      state = State::TRANSMIT;
+      Serial.println( "Data logger initalized" );
+    }
+    else { 
+      Serial.println( "Data logger driver init failed." );
+    }
+  }
+
+  void state_transmit(const float& data_value) {
+    static uint8_t buf[RH_ASK_MAX_MESSAGE_LEN] = { 0 };
+    static uint8_t buf_index = 0;
+    static uint32_t call_count = 0;
+
+    call_count++;
+    
+    if( buf_index < RH_ASK_MAX_MESSAGE_LEN ) {
+      buf[buf_index] = (data_value + 1.0f) * 127;
+      buf_index++;
+    }
+    
+    if( buf_index < RH_ASK_MAX_MESSAGE_LEN || RH_ASK::RHMode::RHModeIdle != driver.mode() ) {
+      return;
+    }
+    
+    driver.send( buf, RH_ASK_MAX_MESSAGE_LEN );
+    
+    buf_index = 0;
+    call_count = 0;
+  }
+
+  RH_ASK driver;
+};
+
+DataLogger::DataLogger()
+: priv( new DataLoggerPriv() )
+{}
+
+DataLogger::DataLogger(DataLogger && other) = default;
+DataLogger& DataLogger::operator=(DataLogger && other) = default;
+
+DataLogger::~DataLogger() { delete priv; }
+
+void DataLogger::loop(const float& data_value)
+{ priv->loop(data_value); }

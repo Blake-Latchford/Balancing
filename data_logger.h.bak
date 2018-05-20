@@ -1,0 +1,16 @@
+class DataLogger
+{
+public:
+  DataLogger();
+
+  DataLogger(DataLogger && other) noexcept;
+  DataLogger& operator=(DataLogger && other) noexcept;
+
+  virtual ~DataLogger();
+
+  void loop(const float& data_value);
+private:
+  struct DataLoggerPriv;
+  
+  DataLoggerPriv* priv;
+};
